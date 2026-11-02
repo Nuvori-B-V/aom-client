@@ -4,6 +4,9 @@ namespace Nuvori\AomClient;
 
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Contracts\Debug\ExceptionHandler;
+use Illuminate\Queue\Events\Looping;
+use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Throwable;
 
@@ -16,11 +19,16 @@ class AomClientServiceProvider extends ServiceProvider
         $this->app->singleton(Aom::class);
         $this->app->singleton(ErrorCollector::class);
         $this->app->singleton(DailyReport::class);
+        $this->app->singleton(HealthCheck::class);
     }
 
     public function boot(): void
     {
         $this->publishes([__DIR__.'/../config/aom.php' => config_path('aom.php')], 'aom-config');
+
+        Route::get('aom/health', fn () => $this->app->make(HealthCheck::class)->response())->name('aom.health');
+
+        Event::listen(Looping::class, fn () => $this->app->make(HealthCheck::class)->beat(HealthCheck::QUEUE_HEARTBEAT));
 
         $handler = $this->app->make(ExceptionHandler::class);
 
@@ -33,6 +41,10 @@ class AomClientServiceProvider extends ServiceProvider
         $this->callAfterResolving(Schedule::class, function (Schedule $schedule): void {
             $schedule->call(fn () => $this->app->make(ErrorCollector::class)->flush())
                 ->name('aom:send-errors')
+                ->everyMinute();
+
+            $schedule->call(fn () => $this->app->make(HealthCheck::class)->beat(HealthCheck::SCHEDULER_HEARTBEAT))
+                ->name('aom:scheduler-heartbeat')
                 ->everyMinute();
 
             $schedule->call(fn () => $this->app->make(DailyReport::class)->send())
