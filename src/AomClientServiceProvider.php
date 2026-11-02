@@ -15,6 +15,7 @@ class AomClientServiceProvider extends ServiceProvider
 
         $this->app->singleton(Aom::class);
         $this->app->singleton(ErrorCollector::class);
+        $this->app->singleton(DailyReport::class);
     }
 
     public function boot(): void
@@ -33,6 +34,10 @@ class AomClientServiceProvider extends ServiceProvider
             $schedule->call(fn () => $this->app->make(ErrorCollector::class)->flush())
                 ->name('aom:send-errors')
                 ->everyMinute();
+
+            $schedule->call(fn () => $this->app->make(DailyReport::class)->send())
+                ->name('aom:send-report')
+                ->dailyAt('03:00');
         });
     }
 }
