@@ -34,6 +34,7 @@ class ErrorCollector
                     'file' => $file,
                     'line' => $exception->getLine(),
                     'path' => $this->routePath(),
+                    'trace' => $this->trace($exception),
                     'count' => 0,
                     'first_at' => $at,
                 ];
@@ -76,6 +77,20 @@ class ErrorCollector
     private function relativePath(string $file): string
     {
         return Str::startsWith($file, base_path().'/') ? Str::after($file, base_path().'/') : Str::after($file, '/vendor/');
+    }
+
+    /**
+     * @return list<array{file: ?string, line: ?int, class: ?string, function: string, vendor: bool}>
+     */
+    private function trace(Throwable $exception): array
+    {
+        return array_map(fn (array $frame): array => [
+            'file' => isset($frame['file']) ? $this->relativePath($frame['file']) : null,
+            'line' => $frame['line'] ?? null,
+            'class' => $frame['class'] ?? null,
+            'function' => $frame['function'],
+            'vendor' => isset($frame['file']) && str_contains($frame['file'], '/vendor/'),
+        ], array_slice($exception->getTrace(), 0, 30));
     }
 
     private function routePath(): ?string

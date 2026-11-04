@@ -82,7 +82,7 @@ class ErrorCollectorTest extends TestCase
 
             return $error['path'] === '/projects/{project}'
                 && $error['message'] === 'Login failed for [email] with password=[filtered] and token: [filtered]'
-                && array_keys($error) === ['fingerprint', 'class', 'message', 'file', 'line', 'path', 'count', 'first_at', 'last_at']
+                && array_keys($error) === ['fingerprint', 'class', 'message', 'file', 'line', 'path', 'trace', 'count', 'first_at', 'last_at']
                 && ! str_contains($body, 'jane@example.com')
                 && ! str_contains($body, 'hunter2')
                 && ! str_contains($body, 'abc123')
@@ -111,6 +111,25 @@ class ErrorCollectorTest extends TestCase
 
         $this->assertNotNull($event);
         $this->assertSame('* * * * *', $event->expression);
+    }
+
+    public function test_an_error_carries_a_stack_trace_without_arguments(): void
+    {
+        report($this->exception());
+
+        $this->travel(1)->minutes();
+        app(ErrorCollector::class)->flush();
+
+        Http::assertSent(function (Request $request) {
+            $trace = $request['errors'][0]['trace'];
+
+            return count($trace) > 0
+                && count($trace) <= 30
+                && $trace[0]['function'] === 'exception'
+                && $trace[0]['class'] === self::class
+                && collect($trace)->every(fn (array $frame) => array_keys($frame) === ['file', 'line', 'class', 'function', 'vendor'])
+                && collect($trace)->contains(fn (array $frame) => $frame['vendor'] === true);
+        });
     }
 
     private function exception(): RuntimeException
