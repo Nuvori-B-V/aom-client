@@ -12,6 +12,8 @@ class Feedback
 {
     private const SCRIPTS = ['html-to-image.js', 'feedback.js'];
 
+    private const CACHE = 'public, max-age=3600';
+
     public function script(): Response
     {
         $source = collect(self::SCRIPTS)
@@ -20,7 +22,15 @@ class Feedback
 
         return response($source, 200, [
             'Content-Type' => 'text/javascript; charset=utf-8',
-            'Cache-Control' => 'public, max-age=3600',
+            'Cache-Control' => self::CACHE,
+        ]);
+    }
+
+    public function style(): Response
+    {
+        return response(file_get_contents(__DIR__.'/../resources/css/feedback.css'), 200, [
+            'Content-Type' => 'text/css; charset=utf-8',
+            'Cache-Control' => self::CACHE,
         ]);
     }
 

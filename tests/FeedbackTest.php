@@ -94,6 +94,7 @@ class FeedbackTest extends TestCase
 
         $this->actingAs($this->user());
         $this->assertStringContainsString('/aom/feedback.js', view('aom::feedback')->render());
+        $this->assertStringContainsString('/aom/feedback.css', view('aom::feedback')->render());
 
         config(['aom.url' => null]);
         $this->assertSame('', trim(view('aom::feedback')->render()));
@@ -106,6 +107,7 @@ class FeedbackTest extends TestCase
         $responses = [
             view('aom::feedback')->render(),
             $this->get('/aom/feedback.js')->assertOk()->assertHeader('Content-Type', 'text/javascript; charset=utf-8')->getContent(),
+            $this->get('/aom/feedback.css')->assertOk()->assertHeader('Content-Type', 'text/css; charset=utf-8')->getContent(),
             $this->postJson('/aom/feedback', ['message' => 'Hi', 'url' => 'https://crm.test'])->assertCreated()->getContent(),
         ];
 

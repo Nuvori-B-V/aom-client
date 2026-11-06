@@ -31,6 +31,7 @@ class AomClientServiceProvider extends ServiceProvider
 
         Route::get('aom/health', fn () => $this->app->make(HealthCheck::class)->response())->name('aom.health');
         Route::get('aom/feedback.js', fn () => $this->app->make(Feedback::class)->script())->name('aom.feedback.script');
+        Route::get('aom/feedback.css', fn () => $this->app->make(Feedback::class)->style())->name('aom.feedback.style');
         Route::post('aom/feedback', fn (Request $request) => $this->app->make(Feedback::class)->send($request))
             ->middleware(['web', 'auth'])
             ->name('aom.feedback');

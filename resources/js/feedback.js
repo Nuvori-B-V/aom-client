@@ -4,10 +4,6 @@
     const MAX_SELECTOR_LENGTH = 500;
     const SCREENSHOT_QUALITY = 0.7;
     const OUTLINE = '3px solid #dc2626';
-    const GAP = '16px';
-    const SMALL_GAP = '8px';
-    const LAYER = 2147483646;
-    const DARK = '#1f2937';
     const UNAVAILABLE = 'Versturen lukt nu niet. Probeer het later opnieuw.';
     const ERRORS = {
         403: 'Feedback staat uit voor deze omgeving.',
@@ -23,21 +19,6 @@
 
         return node;
     };
-
-    const style = create('style');
-    style.textContent = `
-        [${MARKER}] { box-sizing: border-box; font: 14px/1.4 system-ui, sans-serif; }
-        .aom-fb-launcher { position: fixed; right: ${GAP}; bottom: ${GAP}; z-index: ${LAYER}; padding: ${SMALL_GAP} ${GAP}; border: 0; border-radius: 999px; background: ${DARK}; color: #fff; cursor: pointer; box-shadow: 0 2px 8px rgba(0, 0, 0, .2); }
-        .aom-fb-hint { position: fixed; top: ${GAP}; left: 50%; transform: translateX(-50%); z-index: ${LAYER}; padding: ${SMALL_GAP} ${GAP}; border-radius: ${SMALL_GAP}; background: ${DARK}; color: #fff; }
-        .aom-fb-highlight { position: fixed; z-index: ${LAYER - 1}; pointer-events: none; outline: ${OUTLINE}; outline-offset: 2px; }
-        .aom-fb-dialog { width: min(480px, calc(100vw - 2 * ${GAP})); padding: ${GAP}; border: 0; border-radius: 12px; box-shadow: 0 8px 32px rgba(0, 0, 0, .25); }
-        .aom-fb-dialog img { display: block; max-width: 100%; max-height: 200px; margin-bottom: ${SMALL_GAP}; border: 1px solid #e5e7eb; }
-        .aom-fb-dialog textarea { display: block; width: 100%; min-height: 100px; padding: ${SMALL_GAP}; border: 1px solid #d1d5db; border-radius: 6px; }
-        .aom-fb-error { margin-top: ${SMALL_GAP}; color: #dc2626; }
-        .aom-fb-actions { display: flex; justify-content: flex-end; gap: ${SMALL_GAP}; margin-top: ${SMALL_GAP}; }
-        .aom-fb-actions button { padding: 6px 12px; border: 1px solid #d1d5db; border-radius: 6px; background: #fff; cursor: pointer; }
-        .aom-fb-actions .aom-fb-primary { border-color: ${DARK}; background: ${DARK}; color: #fff; }
-    `;
 
     const launcher = create('button', 'aom-fb-launcher', 'Feedback');
     launcher.type = 'button';
@@ -239,6 +220,5 @@
 
     show(hint, false);
     show(highlight, false);
-    document.head.append(style);
     document.body.append(launcher, hint, highlight, dialog);
 })();
