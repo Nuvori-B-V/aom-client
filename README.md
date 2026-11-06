@@ -9,11 +9,10 @@ composer require nuvori/aom-client
 Set in `.env`:
 
 ```
-AOM_URL=https://aom.nuvori.nl
 AOM_INSTALL_TOKEN=aom_ins_...
 ```
 
-Without these the package does nothing.
+Without it the package does nothing.
 
 ## Health check
 
@@ -30,3 +29,13 @@ services:
 ```
 
 Use the port your app listens on inside the container.
+
+## Feedback button
+
+Add the include to your main layout, before `</body>`:
+
+```blade
+@include('aom::feedback')
+```
+
+Signed-in users get a feedback button at the bottom right. They click an element, the package takes a screenshot of the page with that element outlined, and they write a message. The app sends it to AOM with the user's name and email. The install token stays on the server.

@@ -4,6 +4,7 @@ namespace Nuvori\AomClient;
 
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Contracts\Debug\ExceptionHandler;
+use Illuminate\Http\Request;
 use Illuminate\Queue\Events\Looping;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Route;
@@ -20,13 +21,20 @@ class AomClientServiceProvider extends ServiceProvider
         $this->app->singleton(ErrorCollector::class);
         $this->app->singleton(DailyReport::class);
         $this->app->singleton(HealthCheck::class);
+        $this->app->singleton(Feedback::class);
     }
 
     public function boot(): void
     {
         $this->publishes([__DIR__.'/../config/aom.php' => config_path('aom.php')], 'aom-config');
+        $this->loadViewsFrom(__DIR__.'/../resources/views', 'aom');
 
         Route::get('aom/health', fn () => $this->app->make(HealthCheck::class)->response())->name('aom.health');
+        Route::get('aom/feedback.js', fn () => $this->app->make(Feedback::class)->script())->name('aom.feedback.script');
+        Route::get('aom/feedback.css', fn () => $this->app->make(Feedback::class)->style())->name('aom.feedback.style');
+        Route::post('aom/feedback', fn (Request $request) => $this->app->make(Feedback::class)->send($request))
+            ->middleware(['web', 'auth'])
+            ->name('aom.feedback');
 
         Event::listen(Looping::class, fn () => $this->app->make(HealthCheck::class)->beat(HealthCheck::QUEUE_HEARTBEAT));
 

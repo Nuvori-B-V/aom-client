@@ -20,7 +20,7 @@ class AomTest extends TestCase
 
     public function test_it_posts_to_aom_with_the_install_token(): void
     {
-        config(['aom.url' => 'https://aom.nuvori.nl/', 'aom.install_token' => 'aom_ins_secret']);
+        config(['aom.install_token' => 'aom_ins_secret']);
         Http::fake(['*' => Http::response(['ok' => true], 201)]);
 
         $response = app(Aom::class)->post('/feedback', ['message' => 'Hi']);

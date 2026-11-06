@@ -15,7 +15,7 @@ class ErrorCollectorTest extends TestCase
     {
         parent::setUp();
 
-        config(['aom.url' => 'https://aom.test', 'aom.install_token' => 'aom_ins_secret', 'aom.app_version' => '2.4.1']);
+        config(['aom.install_token' => 'aom_ins_secret', 'aom.app_version' => '2.4.1']);
         Http::fake(['*' => Http::response(['accepted' => 1], 202)]);
         $this->travelTo(now()->startOfMinute());
     }
@@ -30,7 +30,7 @@ class ErrorCollectorTest extends TestCase
         app(ErrorCollector::class)->flush();
 
         Http::assertSentCount(1);
-        Http::assertSent(fn (Request $request) => $request->url() === 'https://aom.test/api/v1/errors'
+        Http::assertSent(fn (Request $request) => $request->url() === 'https://aom.nuvori.nl/api/v1/errors'
             && $request['app_version'] === '2.4.1'
             && count($request['errors']) === 1
             && $request['errors'][0]['count'] === 100
@@ -95,11 +95,11 @@ class ErrorCollectorTest extends TestCase
 
     public function test_without_config_nothing_is_collected_or_sent(): void
     {
-        config(['aom.url' => null]);
+        config(['aom.install_token' => null]);
 
         report($this->exception());
         $this->travel(1)->minutes();
-        config(['aom.url' => 'https://aom.test']);
+        config(['aom.install_token' => 'aom_ins_secret']);
         app(ErrorCollector::class)->flush();
 
         Http::assertNothingSent();
