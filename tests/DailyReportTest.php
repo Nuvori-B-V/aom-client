@@ -14,7 +14,7 @@ class DailyReportTest extends TestCase
     {
         parent::setUp();
 
-        config(['aom.url' => 'https://aom.test', 'aom.install_token' => 'aom_ins_secret', 'aom.app_version' => '2.4.1']);
+        config(['aom.install_token' => 'aom_ins_secret', 'aom.app_version' => '2.4.1']);
         Http::fake(['*' => Http::response([], 202)]);
     }
 
@@ -37,7 +37,7 @@ class DailyReportTest extends TestCase
 
         app(DailyReport::class)->send();
 
-        Http::assertSent(fn (Request $request) => $request->url() === 'https://aom.test/api/v1/report'
+        Http::assertSent(fn (Request $request) => $request->url() === 'https://aom.nuvori.nl/api/v1/report'
             && $request['app_version'] === '2.4.1'
             && $request['php_version'] === PHP_VERSION
             && $request['laravel_version'] === app()->version()

@@ -17,7 +17,7 @@ class FeedbackTest extends TestCase
     {
         parent::setUp();
 
-        config(['aom.url' => 'https://aom.test', 'aom.install_token' => self::TOKEN]);
+        config(['aom.install_token' => self::TOKEN]);
         Http::fake(['*' => fn () => Http::response(['id' => 'FB-1', 'status' => 'new'], $this->aomStatus)]);
     }
 
@@ -38,7 +38,7 @@ class FeedbackTest extends TestCase
         Http::assertSent(function (Request $request) {
             $fields = collect($request->data())->pluck('contents', 'name');
 
-            return $request->url() === 'https://aom.test/api/v1/feedback'
+            return $request->url() === 'https://aom.nuvori.nl/api/v1/feedback'
                 && $request->hasHeader('Authorization', 'Bearer '.self::TOKEN)
                 && $request->isMultipart()
                 && $request->hasFile('screenshot')
@@ -90,7 +90,7 @@ class FeedbackTest extends TestCase
 
     public function test_without_config_feedback_is_not_sent(): void
     {
-        config(['aom.url' => null]);
+        config(['aom.install_token' => null]);
 
         $this->actingAs($this->user())
             ->postJson('/aom/feedback', ['message' => 'Hi', 'url' => 'https://crm.test'])
@@ -107,7 +107,7 @@ class FeedbackTest extends TestCase
         $this->assertStringContainsString('/aom/feedback.js', view('aom::feedback')->render());
         $this->assertStringContainsString('/aom/feedback.css', view('aom::feedback')->render());
 
-        config(['aom.url' => null]);
+        config(['aom.install_token' => null]);
         $this->assertSame('', trim(view('aom::feedback')->render()));
     }
 

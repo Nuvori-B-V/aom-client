@@ -8,9 +8,11 @@ use Illuminate\Support\Facades\Http;
 
 class Aom
 {
+    private const API = 'https://aom.nuvori.nl/api/v1';
+
     public function isConfigured(): bool
     {
-        return filled(config('aom.url')) && filled(config('aom.install_token'));
+        return filled(config('aom.install_token'));
     }
 
     /**
@@ -23,7 +25,7 @@ class Aom
             return null;
         }
 
-        $request = Http::baseUrl(rtrim(config('aom.url'), '/').'/api/v1')
+        $request = Http::baseUrl(self::API)
             ->acceptJson()
             ->withToken(config('aom.install_token'))
             ->timeout(5);

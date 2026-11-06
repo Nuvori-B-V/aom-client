@@ -9,11 +9,10 @@ composer require nuvori/aom-client
 Set in `.env`:
 
 ```
-AOM_URL=https://aom.nuvori.nl
 AOM_INSTALL_TOKEN=aom_ins_...
 ```
 
-Without these the package does nothing.
+Without it the package does nothing.
 
 ## Health check
 
