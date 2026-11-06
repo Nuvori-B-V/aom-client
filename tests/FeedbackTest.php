@@ -52,6 +52,17 @@ class FeedbackTest extends TestCase
         });
     }
 
+    public function test_a_user_without_a_name_column_reports_with_their_display_name(): void
+    {
+        $user = (new User)->forceFill(['id' => 2, 'display_name' => 'Piet Jansen', 'email' => 'piet@example.com']);
+
+        $this->actingAs($user)
+            ->postJson('/aom/feedback', ['message' => 'Hi', 'url' => 'https://crm.test'])
+            ->assertCreated();
+
+        Http::assertSent(fn (Request $request) => $request['reporter_name'] === 'Piet Jansen');
+    }
+
     public function test_aom_errors_are_passed_on_to_the_widget(): void
     {
         $this->aomStatus = 429;

@@ -47,7 +47,7 @@ class Feedback
         try {
             $response = app(Aom::class)->post('feedback', [
                 ...collect($data)->except('screenshot')->all(),
-                'reporter_name' => $request->user()->name,
+                'reporter_name' => $request->user()->name ?? $request->user()->display_name ?? $request->user()->email,
                 'reporter_email' => $request->user()->email,
                 'user_agent' => Str::limit((string) $request->userAgent(), 1000, ''),
             ], array_filter(['screenshot' => $request->file('screenshot')]));

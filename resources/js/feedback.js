@@ -98,6 +98,12 @@
         }
     };
 
+    const csrfHeaders = () => {
+        const cookie = document.cookie.match(/(?:^|; )XSRF-TOKEN=([^;]*)/);
+
+        return cookie ? { 'X-XSRF-TOKEN': decodeURIComponent(cookie[1]) } : { 'X-CSRF-TOKEN': script.dataset.csrf };
+    };
+
     const asBlob = (dataUrl) => {
         const [header, data] = dataUrl.split(',');
         const bytes = Uint8Array.from(atob(data), (character) => character.charCodeAt(0));
@@ -198,7 +204,7 @@
             const response = await fetch(script.dataset.endpoint, {
                 body,
                 credentials: 'same-origin',
-                headers: { Accept: 'application/json', 'X-CSRF-TOKEN': script.dataset.csrf },
+                headers: { Accept: 'application/json', ...csrfHeaders() },
                 method: 'POST',
             });
 
