@@ -12,6 +12,10 @@ class ErrorCollector
 
     private const MINUTES = 'aom:errors:minutes';
 
+    private const LOG_LINES = 50;
+
+    private const LOG_BYTES = 20000;
+
     public function capture(Throwable $exception): void
     {
         if (! app(Aom::class)->isConfigured()) {
@@ -35,6 +39,7 @@ class ErrorCollector
                     'line' => $exception->getLine(),
                     'path' => $this->routePath(),
                     'trace' => $this->trace($exception),
+                    'log' => rescue(fn () => $this->log(), null, false),
                     'count' => 0,
                     'first_at' => $at,
                 ];
@@ -91,6 +96,22 @@ class ErrorCollector
             'function' => $frame['function'],
             'vendor' => isset($frame['file']) && str_contains($frame['file'], '/vendor/'),
         ], array_slice($exception->getTrace(), 0, 30));
+    }
+
+    private function log(): ?string
+    {
+        $file = collect(glob(storage_path('logs/*.log')) ?: [])->sortByDesc(fn (string $file) => filemtime($file))->first();
+
+        if ($file === null) {
+            return null;
+        }
+
+        $offset = max(0, filesize($file) - self::LOG_BYTES);
+        $lines = explode("\n", trim(mb_scrub(file_get_contents($file, offset: $offset))));
+        $lines = array_slice($offset > 0 ? array_slice($lines, 1) : $lines, -self::LOG_LINES);
+        $log = implode("\n", array_map(fn (string $line) => $this->redact($line), $lines));
+
+        return $log === '' ? null : mb_substr($log, -self::LOG_BYTES);
     }
 
     private function routePath(): ?string
