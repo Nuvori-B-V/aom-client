@@ -52,7 +52,7 @@ class HealthCheck
         }
     }
 
-    private function isRecent(string $key, int $seconds = self::HEARTBEAT_SECONDS): bool
+    public function isRecent(string $key, int $seconds = self::HEARTBEAT_SECONDS): bool
     {
         return $this->attempt(fn () => now()->getTimestamp() - (int) Cache::get($key, 0) <= $seconds);
     }

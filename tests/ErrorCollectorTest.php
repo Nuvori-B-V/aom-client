@@ -4,10 +4,13 @@ namespace Nuvori\AomClient\Tests;
 
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Http\Client\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
 use Nuvori\AomClient\ErrorCollector;
+use Nuvori\AomClient\HealthCheck;
 use RuntimeException;
 
 class ErrorCollectorTest extends TestCase
@@ -21,6 +24,7 @@ class ErrorCollectorTest extends TestCase
         $this->travelTo(now()->startOfMinute());
         $this->app->useStoragePath(sys_get_temp_dir().'/aom-client-'.uniqid());
         File::ensureDirectoryExists(storage_path('logs'));
+        app(HealthCheck::class)->beat(HealthCheck::SCHEDULER_HEARTBEAT);
     }
 
     protected function tearDown(): void
@@ -180,6 +184,62 @@ class ErrorCollectorTest extends TestCase
         app(ErrorCollector::class)->flush();
 
         Http::assertSent(fn (Request $request) => $request['errors'][0]['log'] === null);
+    }
+
+    public function test_when_the_cache_fails_the_error_is_sent_straight_away(): void
+    {
+        Cache::partialMock()->shouldReceive('lock')->andThrow(new RuntimeException('Cache down'));
+
+        report($this->exception());
+
+        Http::assertSentCount(1);
+        Http::assertSent(fn (Request $request) => $request['errors'][0]['class'] === RuntimeException::class
+            && $request['errors'][0]['count'] === 1);
+    }
+
+    public function test_when_the_scheduler_is_down_the_error_is_sent_straight_away(): void
+    {
+        Cache::forget(HealthCheck::SCHEDULER_HEARTBEAT);
+
+        report($this->exception());
+
+        Http::assertSentCount(1);
+        Http::assertSent(fn (Request $request) => $request['errors'][0]['count'] === 1
+            && $request['errors'][0]['first_at'] === $request['errors'][0]['last_at']);
+    }
+
+    public function test_a_failing_direct_send_does_not_break_the_app(): void
+    {
+        Cache::forget(HealthCheck::SCHEDULER_HEARTBEAT);
+        Http::fake(fn () => throw new RuntimeException('AOM unreachable'));
+
+        report($this->exception());
+
+        $this->assertTrue(true);
+    }
+
+    public function test_a_logged_error_without_exception_is_reported(): void
+    {
+        Log::error('Payment failed for jane@example.com');
+
+        $this->travel(1)->minutes();
+        app(ErrorCollector::class)->flush();
+
+        Http::assertSent(fn (Request $request) => $request['errors'][0]['class'] === 'log.error'
+            && $request['errors'][0]['message'] === 'Payment failed for [email]'
+            && str_ends_with($request['errors'][0]['file'], 'tests/ErrorCollectorTest.php')
+            && $request['errors'][0]['line'] > 0);
+    }
+
+    public function test_warnings_and_logged_exceptions_are_not_reported_as_log_errors(): void
+    {
+        Log::warning('Disk almost full');
+        Log::error('Something broke', ['exception' => $this->exception()]);
+
+        $this->travel(1)->minutes();
+        app(ErrorCollector::class)->flush();
+
+        Http::assertNothingSent();
     }
 
     private function exception(): RuntimeException
