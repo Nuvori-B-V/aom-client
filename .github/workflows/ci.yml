@@ -18,6 +18,8 @@ jobs:
       matrix:
         include:
           - php: '8.2'
+            laravel: '11.*'
+          - php: '8.2'
             laravel: '12.*'
           - php: '8.5'
             laravel: '13.*'
@@ -28,6 +30,8 @@ jobs:
         with:
           php-version: ${{ matrix.php }}
           coverage: none
+      - if: matrix.laravel == '11.*'
+        run: composer config policy.advisories.block false
       - run: composer require "illuminate/support:${{ matrix.laravel }}" "illuminate/http:${{ matrix.laravel }}" --no-interaction --no-update
       - run: composer update --no-interaction --prefer-dist --no-progress --with-all-dependencies
       - run: vendor/bin/pint --test

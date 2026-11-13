@@ -1,6 +1,6 @@
 # nuvori/aom-client
 
-Reports errors, health, versions and feedback from a Laravel app to AOM. Supports PHP 8.2+ and Laravel 12 and 13.
+Reports errors, health, versions and feedback from a Laravel app to AOM. Supports PHP 8.2+ and Laravel 11, 12 and 13.
 
 ```bash
 composer require nuvori/aom-client
