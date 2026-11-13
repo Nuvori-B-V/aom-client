@@ -4,6 +4,7 @@
     const MAX_SELECTOR_LENGTH = 500;
     const SCREENSHOT_QUALITY = 0.7;
     const OUTLINE = '3px solid #dc2626';
+    const XML_NAME = /^[A-Za-z_][\w.-]*$/;
     const UNAVAILABLE = 'Versturen lukt nu niet. Probeer het later opnieuw.';
     const ERRORS = {
         403: 'Feedback staat uit voor deze omgeving.',
@@ -76,12 +77,30 @@
         return (parts.join(' > ') || 'body').slice(0, MAX_SELECTOR_LENGTH);
     };
 
+    const stripNonXmlAttributes = (root) => {
+        for (const element of [root, ...root.querySelectorAll('*')]) {
+            for (const attribute of Array.from(element.attributes)) {
+                if (attribute.namespaceURI === null && !XML_NAME.test(attribute.name)) {
+                    element.removeAttributeNode(attribute);
+                }
+            }
+        }
+    };
+
     const capture = async (target) => {
         const outline = target.style?.outline ?? '';
         const offset = target.style?.outlineOffset ?? '';
+        const serialize = XMLSerializer.prototype.serializeToString;
 
         target.style?.setProperty('outline', OUTLINE);
         target.style?.setProperty('outline-offset', '2px');
+        XMLSerializer.prototype.serializeToString = function (node) {
+            if (node instanceof Element && !node.isConnected) {
+                stripNonXmlAttributes(node);
+            }
+
+            return serialize.call(this, node);
+        };
 
         try {
             return await window.htmlToImage.toJpeg(document.body, {
@@ -94,6 +113,7 @@
         } catch {
             return '';
         } finally {
+            XMLSerializer.prototype.serializeToString = serialize;
             target.style?.setProperty('outline', outline);
             target.style?.setProperty('outline-offset', offset);
         }
