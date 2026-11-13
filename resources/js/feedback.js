@@ -3,7 +3,7 @@
     const MARKER = 'data-aom-feedback';
     const MAX_SELECTOR_LENGTH = 500;
     const SCREENSHOT_QUALITY = 0.7;
-    const OUTLINE = '3px solid #dc2626';
+    const OUTLINE = '3px solid #c8432b';
     const XML_NAME = /^[A-Za-z_][\w.-]*$/;
     const UNAVAILABLE = 'Versturen lukt nu niet. Probeer het later opnieuw.';
     const ERRORS = {
@@ -11,6 +11,11 @@
         422: 'Controleer je bericht en probeer het opnieuw.',
         429: 'Je hebt te veel feedback verstuurd. Probeer het later opnieuw.',
     };
+    const STROKE = 'fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"';
+    const CHAT_ICON = `<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" ${STROKE}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`;
+    const CURSOR_ICON = `<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" ${STROKE}><path d="M4 4l7 17 2.5-7.5L21 11z"/></svg>`;
+    const CHECK_ICON = `<svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" ${STROKE} stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>`;
+    const AOM_LOGO = '<svg aria-hidden="true" width="14" height="14" viewBox="0 0 30 30"><circle cx="15" cy="15" r="12" fill="none" stroke="currentColor" stroke-width="4"/><circle cx="15" cy="15" r="4.6" fill="#c8432b"/></svg>';
 
     const create = (tag, className = '', text = '') => {
         const node = document.createElement(tag);
@@ -21,17 +26,37 @@
         return node;
     };
 
+    const icon = (className, svg) => {
+        const node = create('span', className);
+        node.innerHTML = svg;
+
+        return node;
+    };
+
     const launcher = create('button', 'aom-fb-launcher', 'Feedback');
     launcher.type = 'button';
+    launcher.prepend(icon('aom-fb-icon', CHAT_ICON));
     const hint = create('div', 'aom-fb-hint', 'Klik op het onderdeel waar je feedback over hebt. Esc om te stoppen.');
+    hint.prepend(icon('aom-fb-icon', CURSOR_ICON));
     const highlight = create('div', 'aom-fb-highlight');
     const dialog = create('dialog', 'aom-fb-dialog');
+    const content = create('div', 'aom-fb-body');
+    const header = create('div');
+    header.append(create('h2', 'aom-fb-title', 'Feedback geven'), create('p', 'aom-fb-subtitle', 'Over het onderdeel dat je aanklikte'));
+    const shot = create('div', 'aom-fb-shot');
     const preview = create('img');
     preview.alt = 'Schermafbeelding';
+    shot.append(preview, create('span', 'aom-fb-badge', 'Schermafbeelding'));
+    const field = create('div', 'aom-fb-field');
+    const label = create('label', 'aom-fb-label', 'Wat valt je op?');
+    label.htmlFor = 'aom-fb-message';
     const message = create('textarea');
-    message.placeholder = 'Wat valt je op?';
+    message.id = 'aom-fb-message';
+    message.placeholder = 'Bijvoorbeeld: deze knop doet niets als ik erop klik';
     message.maxLength = 5000;
-    const thanks = create('p', '', 'Bedankt, je feedback is verstuurd.');
+    field.append(label, message);
+    const thanks = create('div', 'aom-fb-thanks');
+    thanks.append(icon('aom-fb-check', CHECK_ICON), 'Bedankt, je feedback is verstuurd.');
     const error = create('div', 'aom-fb-error');
     const actions = create('div', 'aom-fb-actions');
     const cancel = create('button', '', 'Annuleren');
@@ -39,8 +64,14 @@
     const send = create('button', 'aom-fb-primary', 'Versturen');
     send.type = 'button';
 
+    const footer = create('div', 'aom-fb-footer', 'Powered by');
+    const brand = create('span', 'aom-fb-brand', 'aom');
+    brand.insertAdjacentHTML('afterbegin', AOM_LOGO);
+    footer.append(brand);
+
     actions.append(cancel, send);
-    dialog.append(thanks, preview, message, error, actions);
+    content.append(header, thanks, shot, field, error, actions);
+    dialog.append(content, footer);
 
     let selector = '';
     let screenshot = '';
@@ -53,8 +84,9 @@
     const showSent = (visible) => {
         sent = visible;
         show(thanks, visible);
-        show(preview, !visible && screenshot !== '');
-        show(message, !visible);
+        show(header, !visible);
+        show(shot, !visible && screenshot !== '');
+        show(field, !visible);
         show(cancel, !visible);
         send.textContent = visible ? 'Sluiten' : 'Versturen';
     };
