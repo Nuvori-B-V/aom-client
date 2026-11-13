@@ -87,6 +87,7 @@
             return await window.htmlToImage.toJpeg(document.body, {
                 backgroundColor: '#fff',
                 filter: (node) => !(node instanceof Element && node.hasAttribute(MARKER)),
+                onImageErrorHandler: () => {},
                 pixelRatio: 1,
                 quality: SCREENSHOT_QUALITY,
             });
