@@ -2,6 +2,7 @@
 
 namespace Nuvori\AomClient;
 
+use Illuminate\Log\Events\MessageLogged;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use Throwable;
@@ -23,32 +24,26 @@ class ErrorCollector
         }
 
         try {
-            $file = $this->relativePath($exception->getFile());
-            $fingerprint = 'sha256:'.hash('sha256', get_class($exception).'|'.$file.'|'.$exception->getLine());
-            $minute = now()->startOfMinute()->getTimestamp();
-            $at = now()->utc()->toIso8601ZuluString();
+            $this->record(get_class($exception), $exception->getMessage(), $exception->getFile(), $exception->getLine(), $exception->getTrace());
+        } catch (Throwable) {
+        }
+    }
 
-            Cache::lock('aom:errors:lock', 5)->block(2, function () use ($exception, $file, $fingerprint, $minute, $at) {
-                $errors = Cache::get("aom:errors:{$minute}", []);
+    public function captureLog(MessageLogged $event): void
+    {
+        if (! app(Aom::class)->isConfigured()
+            || ! in_array($event->level, ['error', 'critical', 'alert', 'emergency'], true)
+            || ($event->context['exception'] ?? null) instanceof Throwable) {
+            return;
+        }
 
-                $errors[$fingerprint] ??= [
-                    'fingerprint' => $fingerprint,
-                    'class' => get_class($exception),
-                    'message' => $this->redact($exception->getMessage()),
-                    'file' => $file,
-                    'line' => $exception->getLine(),
-                    'path' => $this->routePath(),
-                    'trace' => $this->trace($exception),
-                    'log' => rescue(fn () => $this->log(), null, false),
-                    'count' => 0,
-                    'first_at' => $at,
-                ];
-                $errors[$fingerprint]['count']++;
-                $errors[$fingerprint]['last_at'] = $at;
+        try {
+            $frames = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS);
+            $index = collect($frames)->keys()->last(fn (int $index) => Str::startsWith($frames[$index]['class'] ?? '', ['Illuminate\\Log\\', 'Illuminate\\Support\\Facades\\']));
 
-                Cache::put("aom:errors:{$minute}", $errors, now()->addDay());
-                Cache::put(self::MINUTES, array_unique([...Cache::get(self::MINUTES, []), $minute]), now()->addDay());
-            });
+            if ($index !== null) {
+                $this->record("log.{$event->level}", $event->message, $frames[$index]['file'] ?? '', $frames[$index]['line'] ?? 0, array_slice($frames, $index));
+            }
         } catch (Throwable) {
         }
     }
@@ -79,15 +74,62 @@ class ErrorCollector
         }
     }
 
+    /**
+     * @param  list<array<string, mixed>>  $frames
+     */
+    private function record(string $class, string $message, string $file, int $line, array $frames): void
+    {
+        $file = $this->relativePath($file);
+        $fingerprint = 'sha256:'.hash('sha256', $class.'|'.$file.'|'.$line);
+        $minute = now()->startOfMinute()->getTimestamp();
+        $at = now()->utc()->toIso8601ZuluString();
+        $error = fn (): array => [
+            'fingerprint' => $fingerprint,
+            'class' => $class,
+            'message' => $this->redact($message),
+            'file' => $file,
+            'line' => $line,
+            'path' => $this->routePath(),
+            'trace' => $this->trace($frames),
+            'log' => rescue(fn () => $this->log(), null, false),
+        ];
+        $sendNow = fn () => rescue(fn () => app(Aom::class)->post('errors', [
+            'app_version' => config('aom.app_version'),
+            'errors' => [[...$error(), 'count' => 1, 'first_at' => $at, 'last_at' => $at]],
+        ]), null, false);
+
+        if (! app(HealthCheck::class)->isRecent(HealthCheck::SCHEDULER_HEARTBEAT)) {
+            $sendNow();
+
+            return;
+        }
+
+        try {
+            Cache::lock('aom:errors:lock', 5)->block(2, function () use ($error, $fingerprint, $minute, $at) {
+                $errors = Cache::get("aom:errors:{$minute}", []);
+
+                $errors[$fingerprint] ??= [...$error(), 'count' => 0, 'first_at' => $at];
+                $errors[$fingerprint]['count']++;
+                $errors[$fingerprint]['last_at'] = $at;
+
+                Cache::put("aom:errors:{$minute}", $errors, now()->addDay());
+                Cache::put(self::MINUTES, array_unique([...Cache::get(self::MINUTES, []), $minute]), now()->addDay());
+            });
+        } catch (Throwable) {
+            $sendNow();
+        }
+    }
+
     private function relativePath(string $file): string
     {
         return Str::startsWith($file, base_path().'/') ? Str::after($file, base_path().'/') : Str::after($file, '/vendor/');
     }
 
     /**
+     * @param  list<array<string, mixed>>  $frames
      * @return list<array{file: ?string, line: ?int, class: ?string, function: string, vendor: bool}>
      */
-    private function trace(Throwable $exception): array
+    private function trace(array $frames): array
     {
         return array_map(fn (array $frame): array => [
             'file' => isset($frame['file']) ? $this->relativePath($frame['file']) : null,
@@ -95,7 +137,7 @@ class ErrorCollector
             'class' => $frame['class'] ?? null,
             'function' => $frame['function'],
             'vendor' => isset($frame['file']) && str_contains($frame['file'], '/vendor/'),
-        ], array_slice($exception->getTrace(), 0, 30));
+        ], array_slice($frames, 0, 30));
     }
 
     private function log(): ?string

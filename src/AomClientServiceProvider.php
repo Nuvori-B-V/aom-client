@@ -5,6 +5,7 @@ namespace Nuvori\AomClient;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Http\Request;
+use Illuminate\Log\Events\MessageLogged;
 use Illuminate\Queue\Events\Looping;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Route;
@@ -37,6 +38,7 @@ class AomClientServiceProvider extends ServiceProvider
             ->name('aom.feedback');
 
         Event::listen(Looping::class, fn () => $this->app->make(HealthCheck::class)->beat(HealthCheck::QUEUE_HEARTBEAT));
+        Event::listen(MessageLogged::class, fn (MessageLogged $event) => $this->app->make(ErrorCollector::class)->captureLog($event));
 
         $handler = $this->app->make(ExceptionHandler::class);
 
