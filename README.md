@@ -38,4 +38,4 @@ Add the include to your main layout, before `</body>`:
 @include('aom::feedback')
 ```
 
-Signed-in users get a feedback button at the bottom right. They click an element, the package takes a screenshot of the page with that element outlined, and they write a message. The app sends it to AOM with the user's name and email. The install token stays on the server.
+Signed-in users get a feedback button at the bottom right. They click an element, the package takes a screenshot of that element, and they write a message. The app sends it to AOM with the user's name and email. The install token stays on the server.

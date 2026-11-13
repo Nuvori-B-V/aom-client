@@ -3,7 +3,6 @@
     const MARKER = 'data-aom-feedback';
     const MAX_SELECTOR_LENGTH = 500;
     const SCREENSHOT_QUALITY = 0.7;
-    const OUTLINE = '3px solid #c8432b';
     const XML_NAME = /^[A-Za-z_][\w.-]*$/;
     const UNAVAILABLE = 'Versturen lukt nu niet. Probeer het later opnieuw.';
     const ERRORS = {
@@ -120,12 +119,9 @@
     };
 
     const capture = async (target) => {
-        const outline = target.style?.outline ?? '';
-        const offset = target.style?.outlineOffset ?? '';
+        const { width, height } = target.getBoundingClientRect();
         const serialize = XMLSerializer.prototype.serializeToString;
 
-        target.style?.setProperty('outline', OUTLINE);
-        target.style?.setProperty('outline-offset', '2px');
         XMLSerializer.prototype.serializeToString = function (node) {
             if (node instanceof Element && !node.isConnected) {
                 stripNonXmlAttributes(node);
@@ -135,19 +131,19 @@
         };
 
         try {
-            return await window.htmlToImage.toJpeg(document.body, {
+            return await window.htmlToImage.toJpeg(target, {
                 backgroundColor: '#fff',
                 filter: (node) => !(node instanceof Element && node.hasAttribute(MARKER)),
+                height: Math.ceil(height),
                 onImageErrorHandler: () => {},
                 pixelRatio: 1,
                 quality: SCREENSHOT_QUALITY,
+                width: Math.ceil(width),
             });
         } catch {
             return '';
         } finally {
             XMLSerializer.prototype.serializeToString = serialize;
-            target.style?.setProperty('outline', outline);
-            target.style?.setProperty('outline-offset', offset);
         }
     };
 
