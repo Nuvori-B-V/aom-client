@@ -77,6 +77,33 @@ class ErrorCollectorTest extends TestCase
         Http::assertSent(fn (Request $request) => count($request['errors']) === 2);
     }
 
+    public function test_errors_from_one_line_are_grouped_by_message(): void
+    {
+        foreach (['agents:run-due', 'inbox-sync:run', 'agents:run-due'] as $command) {
+            report(new RuntimeException("Scheduled command [{$command}] failed with exit code [1]."));
+        }
+
+        $this->travel(1)->minutes();
+        app(ErrorCollector::class)->flush();
+
+        Http::assertSent(fn (Request $request) => count($request['errors']) === 2
+            && $request['errors'][0]['count'] === 2
+            && $request['errors'][1]['count'] === 1);
+    }
+
+    public function test_numbers_and_ids_in_a_message_do_not_split_a_group(): void
+    {
+        foreach (['12', '9f1c2e4a-7b3d-4c5e-8a6f-0b1c2d3e4f5a', '01JD3QZ8X4'] as $id) {
+            report(new RuntimeException("Agent {$id} not found"));
+        }
+
+        $this->travel(1)->minutes();
+        app(ErrorCollector::class)->flush();
+
+        Http::assertSent(fn (Request $request) => count($request['errors']) === 1
+            && $request['errors'][0]['count'] === 3);
+    }
+
     public function test_sensitive_data_never_leaves_the_app(): void
     {
         Route::post('/projects/{project}', fn () => throw new RuntimeException(
