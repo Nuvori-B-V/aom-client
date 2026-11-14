@@ -80,7 +80,7 @@ class ErrorCollector
     private function record(string $class, string $message, string $file, int $line, array $frames): void
     {
         $file = $this->relativePath($file);
-        $fingerprint = 'sha256:'.hash('sha256', $class.'|'.$file.'|'.$line);
+        $fingerprint = 'sha256:'.hash('sha256', $class.'|'.$file.'|'.$line.'|'.preg_replace('/[\w-]*\d[\w-]*/', '#', $this->redact($message)));
         $minute = now()->startOfMinute()->getTimestamp();
         $at = now()->utc()->toIso8601ZuluString();
         $error = fn (): array => [
