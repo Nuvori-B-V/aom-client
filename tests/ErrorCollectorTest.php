@@ -112,7 +112,7 @@ class ErrorCollectorTest extends TestCase
 
         $this->withCookie('laravel_session', 'cookie-value')
             ->withHeader('X-Secret-Header', 'header-value')
-            ->post('/projects/12', ['password' => 'body-password', 'name' => 'Jane']);
+            ->post('/projects/12?invite=query-secret', ['password' => 'body-password', 'name' => 'Jane']);
 
         $this->travel(1)->minutes();
         app(ErrorCollector::class)->flush();
@@ -122,16 +122,40 @@ class ErrorCollectorTest extends TestCase
             $error = $request['errors'][0];
 
             return $error['path'] === '/projects/{project}'
+                && $error['url'] === 'http://localhost/projects/12'
                 && $error['message'] === 'Login failed for [email] with password=[filtered] and token: [filtered]'
-                && array_keys($error) === ['fingerprint', 'class', 'message', 'file', 'line', 'path', 'trace', 'log', 'count', 'first_at', 'last_at']
+                && array_keys($error) === ['fingerprint', 'class', 'message', 'file', 'line', 'path', 'url', 'trace', 'log', 'count', 'first_at', 'last_at']
                 && ! str_contains($body, 'jane@example.com')
                 && ! str_contains($body, 'hunter2')
                 && ! str_contains($body, 'abc123')
                 && ! str_contains($body, 'body-password')
                 && ! str_contains($body, 'cookie-value')
                 && ! str_contains($body, 'header-value')
+                && ! str_contains($body, 'query-secret')
                 && ! str_contains($body, 'select * from users');
         });
+    }
+
+    public function test_an_error_in_a_url_with_an_email_has_the_email_redacted(): void
+    {
+        Route::get('/users/{email}', fn () => throw new RuntimeException('Not found'));
+
+        $this->get('/users/jane@example.com');
+
+        $this->travel(1)->minutes();
+        app(ErrorCollector::class)->flush();
+
+        Http::assertSent(fn (Request $request) => $request['errors'][0]['url'] === 'http://localhost/users/[email]');
+    }
+
+    public function test_an_error_outside_a_request_has_no_url(): void
+    {
+        report($this->exception());
+
+        $this->travel(1)->minutes();
+        app(ErrorCollector::class)->flush();
+
+        Http::assertSent(fn (Request $request) => $request['errors'][0]['url'] === null);
     }
 
     public function test_without_config_nothing_is_collected_or_sent(): void
