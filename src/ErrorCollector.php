@@ -90,6 +90,7 @@ class ErrorCollector
             'file' => $file,
             'line' => $line,
             'path' => $this->routePath(),
+            'url' => $this->url(),
             'trace' => $this->trace($frames),
             'log' => rescue(fn () => $this->log(), null, false),
         ];
@@ -163,10 +164,15 @@ class ErrorCollector
         return $uri === null ? null : '/'.ltrim($uri, '/');
     }
 
+    private function url(): ?string
+    {
+        return request()->route() === null ? null : $this->redact(request()->url());
+    }
+
     private function redact(string $message): string
     {
         $message = preg_replace('/\s*\(Connection: .*$/s', '', $message);
-        $message = preg_replace('/[^\s@"\'(),;]+@[^\s@"\'(),;]+\.[a-z]{2,}/i', '[email]', $message);
+        $message = preg_replace('/[^\s@"\'(),;\/]+@[^\s@"\'(),;\/]+\.[a-z]{2,}/i', '[email]', $message);
         $message = preg_replace('/\b('.self::SENSITIVE.')(\s*[=:]\s*)("[^"]*"|\'[^\']*\'|\S+)/i', '$1$2[filtered]', $message);
 
         return Str::limit($message, 2000);
