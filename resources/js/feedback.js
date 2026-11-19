@@ -118,6 +118,24 @@
         }
     };
 
+    const backgroundOf = (target) => {
+        for (let node = target; node instanceof Element; node = node.parentElement) {
+            const color = getComputedStyle(node).backgroundColor;
+
+            if (color !== 'transparent' && color !== 'rgba(0, 0, 0, 0)') {
+                return color;
+            }
+        }
+
+        return '#fff';
+    };
+
+    const isDark = (color) => {
+        const [red, green, blue] = (color.match(/[\d.]+/g) ?? [255, 255, 255]).map(Number);
+
+        return 0.299 * red + 0.587 * green + 0.114 * blue < 128;
+    };
+
     const capture = async (target) => {
         const { width, height } = target.getBoundingClientRect();
         const serialize = XMLSerializer.prototype.serializeToString;
@@ -132,12 +150,13 @@
 
         try {
             return await window.htmlToImage.toJpeg(target, {
-                backgroundColor: '#fff',
+                backgroundColor: backgroundOf(target),
                 filter: (node) => !(node instanceof Element && node.hasAttribute(MARKER)),
                 height: Math.ceil(height),
                 onImageErrorHandler: () => {},
                 pixelRatio: 1,
                 quality: SCREENSHOT_QUALITY,
+                style: { margin: '0' },
                 width: Math.ceil(width),
             });
         } catch {
@@ -215,6 +234,7 @@
         message.value = '';
         error.textContent = '';
         showSent(false);
+        dialog.classList.toggle('aom-fb-dialog-dark', isDark(backgroundOf(document.body)));
         dialog.showModal();
         message.focus();
     };
