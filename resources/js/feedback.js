@@ -130,6 +130,12 @@
         return '#fff';
     };
 
+    const isDark = (color) => {
+        const [red, green, blue] = (color.match(/[\d.]+/g) ?? [255, 255, 255]).map(Number);
+
+        return 0.299 * red + 0.587 * green + 0.114 * blue < 128;
+    };
+
     const capture = async (target) => {
         const { width, height } = target.getBoundingClientRect();
         const serialize = XMLSerializer.prototype.serializeToString;
@@ -228,6 +234,7 @@
         message.value = '';
         error.textContent = '';
         showSent(false);
+        dialog.classList.toggle('aom-fb-dialog-dark', isDark(backgroundOf(document.body)));
         dialog.showModal();
         message.focus();
     };
