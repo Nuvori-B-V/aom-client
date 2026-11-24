@@ -14,6 +14,10 @@ use Throwable;
 
 class AomClientServiceProvider extends ServiceProvider
 {
+    private const BACKUP_SUCCEEDED = 'Spatie\Backup\Events\BackupWasSuccessful';
+
+    private const BACKUP_FAILED = 'Spatie\Backup\Events\BackupHasFailed';
+
     public function register(): void
     {
         $this->mergeConfigFrom(__DIR__.'/../config/aom.php', 'aom');
@@ -39,6 +43,11 @@ class AomClientServiceProvider extends ServiceProvider
 
         Event::listen(Looping::class, fn () => $this->app->make(HealthCheck::class)->beat(HealthCheck::QUEUE_HEARTBEAT));
         Event::listen(MessageLogged::class, fn (MessageLogged $event) => $this->app->make(ErrorCollector::class)->captureLog($event));
+
+        if (class_exists(self::BACKUP_SUCCEEDED)) {
+            Event::listen(self::BACKUP_SUCCEEDED, fn (object $event) => $this->app->make(DailyReport::class)->recordBackup(true, $event));
+            Event::listen(self::BACKUP_FAILED, fn (object $event) => $this->app->make(DailyReport::class)->recordBackup(false, $event));
+        }
 
         $handler = $this->app->make(ExceptionHandler::class);
 
