@@ -66,6 +66,10 @@ class AomClientServiceProvider extends ServiceProvider
                 ->name('aom:scheduler-heartbeat')
                 ->everyMinute();
 
+            $schedule->call(fn () => $this->app->make(HealthCheck::class)->send())
+                ->name('aom:send-health')
+                ->everyMinute();
+
             $schedule->call(fn () => $this->app->make(DailyReport::class)->send())
                 ->name('aom:send-report')
                 ->dailyAt('03:00');
